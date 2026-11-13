@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Genshin Wish Simulator</title>
+<style>
+body{margin:0;padding:16px;background:#121b2b;color:#f5f5f5;font:16px system-ui}main{max-width:680px;margin:auto}h1{color:#f2cf7b;text-align:center}.card{background:#202d40;border:1px solid #40516b;border-radius:14px;padding:15px;margin:12px 0}.stats,.buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stats div{text-align:center;background:#2c3c53;padding:10px;border-radius:10px}.stats b{display:block;font-size:24px;color:#f2cf7b}button{padding:13px 8px;border:0;border-radius:10px;background:#f2cf7b;font-weight:bold;font-size:15px}.buttons{grid-template-columns:repeat(2,1fr)}button.alt{background:#425875;color:white}input{width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #66758b;background:#111b2b;color:white;font-size:16px}small,p{color:#b9c5d5;line-height:1.5}.bar{height:10px;background:#101725;border-radius:10px;overflow:hidden}.bar div{height:100%;background:#f2cf7b;width:0}.entry{display:flex;justify-content:space-between;background:#2c3c53;border-radius:9px;padding:10px;margin:7px 0}.win{color:#71e0a8}.loss{color:#ff9292}
+</style>
+<main><h1>✨ Genshin Wish Simulator</h1><p style="text-align:center">Character Event Wish • simplified probability model</p>
+<section class="card"><div class="stats"><div><b id="pity">0</b><small>Pity</small></div><div><b id="stars">0</b><small>5-stars</small></div><div><b id="wins">0</b><small>Featured wins</small></div></div>
+<p id="guarantee">Next 5-star: 50/50</p><label>Featured character</label><input id="featured" value="Furina" maxlength="30"><p>Progress to hard pity</p><div class="bar"><div id="progress"></div></div><small id="chance">Next wish 5-star chance: 0.6%</small></section>
+<section class="card"><div class="buttons"><button id="one">Wish ×1</button><button id="ten">Wish ×10</button><button class="alt" id="pull">Pull to 5-Star</button><button class="alt" id="reset">Reset session</button></div></section>
+<section class="card"><h3>Latest result</h3><div id="result">🌠 Ready when you are.</div></section>
+<section class="card"><h3>Wish history</h3><div id="history">No wishes yet.</div></section>
+<section class="card"><h3>Probability model</h3><small>0.6% base 5-star chance through pity 73. Starting at pity 74, chance rises by 6 percentage points per wish, reaching 100% at pity 90. Non-guaranteed 5-stars use a simplified 55% featured chance; after losing, the next 5-star is guaranteed featured. This does not reproduce every detail of Capturing Radiance or the exact in-game consolidated probability.</small></section></main>
+<script>
+(()=>{'use strict';
+let pity=0,stars=0,wins=0,guaranteed=false,history=[];
+const $=id=>document.getElementById(id);
+const standard=['Diluc','Jean','Mona','Qiqi','Keqing','Dehya','Tighnari'];
+function chance(n){return n<=73?.006:Math.min(1,.006+.06*(n-73))}
+function render(){
+$('pity').textContent=pity;$('stars').textContent=stars;$('wins').textContent=wins;
+$('guarantee').textContent=guaranteed?'Next 5-star: GUARANTEED featured':'Next 5-star: 50/50 (simplified 55%)';
+$('progress').style.width=(pity/90*100)+'%';$('chance').textContent='Next wish 5-star chance: '+(chance(pity+1)*100).toFixed(1)+'%';
+const box=$('history');box.replaceChildren();
+if(!history.length){box.textContent='No wishes yet.';return}
+history.slice().reverse().forEach(x=>{const row=document.createElement('div');row.className='entry';const left=document.createElement('span');left.textContent=x.name+' • '+x.detail;const tag=document.createElement('b');tag.className=x.kind;tag.textContent=x.label;row.append(left,tag);box.append(row)});
+}
+function wish(){
+const roll=Math.random(),n=pity+1;
+if(roll<chance(n)){
+pity=0;stars++;let name,kind,label;
+if(guaranteed){name=$('featured').value.trim()||'Featured character';kind='win';label='Featured win';guaranteed=false;wins++}
+else if(Math.random()<.55){name=$('featured').value.trim()||'Featured character';kind='win';label='Featured win';wins++}
+else{name=standard[Math.floor(Math.random()*standard.length)];kind='loss';label='50/50 loss';guaranteed=true}
+history.push({name,detail:'5-star at '+n+' pity',kind,label});
+$('result').textContent=(kind==='win'?'🌟 ':'💫 ')+name+' — '+label+' at '+n+' pity'+(kind==='loss'?'. Next 5-star is guaranteed.':'');render();return true;
+}
+pity++;const four=Math.random()<.06;history.push({name:four?'Random 4-star item':'3-star weapon',detail:'pity now '+pity,kind:'',label:four?'4★':'3★'});
+$('result').textContent=(four?'🔹 ':'✨ ')+(four?'4-star item':'3-star weapon')+' — no 5-star. Current pity: '+pity;render();return false;
+}
+function pull(count){for(let i=0;i<count;i++)if(wish())break}
+$('one').onclick=()=>pull(1);$('ten').onclick=()=>pull(10);$('pull').onclick=()=>{let i=0;while(i++<90&&pity<90)if(wish())break};
+$('reset').onclick=()=>{pity=stars=wins=0;guaranteed=false;history=[];$('result').textContent='🌠 Session reset.';render()};
+render();
+})();
+</script></html>
